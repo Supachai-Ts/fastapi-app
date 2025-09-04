@@ -6,9 +6,6 @@ pipeline {
         }
     }
 
-    environment {
-        SONARQUBE = credentials('sonar-token')
-    }
     stages {
         stage('Checkout') {
             steps {
@@ -19,7 +16,7 @@ pipeline {
             steps {
                 sh 'pip install --upgrade pip'
                 sh 'pip install -r requirements.txt'
-                sh 'pip install sonar-scanner coverage'
+                sh 'pip install coverage pytest'
             }
         }
         stage('Run Tests & Coverage') {
@@ -28,17 +25,16 @@ pipeline {
             }
         }
         stage('SonarQube Analysis') {
-    steps {
-        sh '''
-          sonar-scanner \
-            -Dsonar.projectKey=fast-api \
-            -Dsonar.projectName=fast-api \
-            -Dsonar.host.url=http://localhost:9000 \
-            -Dsonar.login=sqp_c41ae5588b3862537947f865aab10481df349868
-        '''
-    }
-}
-
+            steps {
+                sh '''
+                  sonar-scanner \
+                    -Dsonar.projectKey=fast-api \
+                    -Dsonar.projectName=fast-api \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.login=sqp_c41ae5588b3862537947f865aab10481df349868
+                '''
+            }
+        }
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t fastapi-app:latest .'
@@ -46,10 +42,15 @@ pipeline {
         }
         stage('Deploy Container') {
             steps {
-                sh 'docker run -d -p 8000:8000 fastapi-app:latest'
+                sh '''
+                  docker stop fastapi-app || true
+                  docker rm fastapi-app || true
+                  docker run -d -p 8000:8000 --name fastapi-app fastapi-app:latest
+                '''
             }
         }
     }
+
     post {
         always {
             echo "Pipeline finished"
