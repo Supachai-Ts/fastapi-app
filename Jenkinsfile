@@ -1,16 +1,25 @@
 pipeline {
   agent {
     docker {
-      image 'python:3.13'
-      args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+        image 'python-java:latest'
+        args '-v /var/run/docker.sock:/var/run/docker.sock'
     }
-  }
+}
 
   stages {
     stage('Checkout') {
       steps {
         git branch: 'main', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
       }
+    }
+
+    stage('Install Java for SonarQube') {
+        steps {
+            sh '''
+                apt-get update && apt-get install -y openjdk-17-jre
+                java -version
+            '''
+        }
     }
 
     stage('Install Dependencies') {
