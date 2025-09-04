@@ -23,13 +23,11 @@ pipeline {
     }
 
     stage('Install Dependencies') {
-      steps {
-        sh '''
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install coverage pytest pytest-cov
-        '''
-      }
+        steps {
+            sh 'pip install --user --upgrade pip'
+            sh 'pip install --user -r requirements.txt'
+            sh 'pip install --user coverage pytest pytest-cov'
+        }
     }
 
     stage('Run Tests & Coverage') {
