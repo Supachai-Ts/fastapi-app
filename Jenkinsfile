@@ -2,24 +2,15 @@ pipeline {
   agent {
     docker {
         image 'python-java:latest'
-        args '-v /var/run/docker.sock:/var/run/docker.sock'
+        args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
     }
-}
+  }
 
   stages {
     stage('Checkout') {
       steps {
         git branch: 'main', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
       }
-    }
-
-    stage('Install Java for SonarQube') {
-        steps {
-            sh '''
-                apt-get update && apt-get install -y openjdk-17-jre
-                java -version
-            '''
-        }
     }
 
     stage('Install Dependencies') {
@@ -34,17 +25,18 @@ pipeline {
         }       
     }
 
-
     stage('Run Tests & Coverage') {
       steps {
-        sh 'pytest --cov=app tests/'
+        sh '''
+          . venv/bin/activate
+          pytest --cov=app tests/
+        '''
       }
     }
 
     stage('SonarQube Analysis') {
       steps {
         script {
-          // ใช้ SonarScanner จาก Global Tool
           def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
           withSonarQubeEnv('SonarQube') {
             sh """
