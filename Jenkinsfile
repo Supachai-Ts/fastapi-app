@@ -1,7 +1,11 @@
 pipeline {
     agent {
-        docker { image 'python:3.11' args '-v /var/run/docker.sock:/var/run/docker.sock' }
+        docker {
+            image 'python:3.11'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
     }
+
     environment {
         SONARQUBE = credentials('sonar-token')
     }
