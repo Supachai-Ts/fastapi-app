@@ -24,11 +24,16 @@ pipeline {
 
     stage('Install Dependencies') {
         steps {
-            sh 'pip install --user --upgrade pip'
-            sh 'pip install --user -r requirements.txt'
-            sh 'pip install --user coverage pytest pytest-cov'
-        }
+            sh '''
+                python -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                pip install coverage pytest pytest-cov
+            '''
+        }       
     }
+
 
     stage('Run Tests & Coverage') {
       steps {
