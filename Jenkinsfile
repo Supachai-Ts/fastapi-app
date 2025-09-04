@@ -14,15 +14,15 @@ pipeline {
     }
 
     stage('Install Dependencies') {
-        steps {
-            sh '''
-                python -m venv venv
-                . venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                pip install coverage pytest pytest-cov
-            '''
-        }       
+      steps {
+        sh '''
+          python -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install coverage pytest pytest-cov
+        '''
+      }
     }
 
     stage('Run Tests & Coverage') {
@@ -35,24 +35,23 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
-        steps {
-            script {
-                def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=fast-api \
-                            -Dsonar.projectName=fast-api \
-                            -Dsonar.sources=./app \
-                            -Dsonar.token=$SONAR_TOKEN
-                        """
-                    }
-                }
+      steps {
+        script {
+          def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+          withSonarQubeEnv('SonarQube') {
+            withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+              sh """
+                ${scannerHome}/bin/sonar-scanner \
+                  -Dsonar.projectKey=fast-api \
+                  -Dsonar.projectName=fast-api \
+                  -Dsonar.sources=./app \
+                  -Dsonar.token=$SONAR_TOKEN
+              """
             }
+          }
         }
+      }
     }
-
 
     stage('Build Docker Image') {
       steps {
