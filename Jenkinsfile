@@ -16,9 +16,10 @@ pipeline {
             steps {
                 sh 'pip install --upgrade pip'
                 sh 'pip install -r requirements.txt'
-                sh 'pip install coverage pytest'
+                sh 'pip install coverage pytest pytest-cov'
             }
         }
+
         stage('Run Tests & Coverage') {
             steps {
                 sh 'pytest --cov=app tests/'
