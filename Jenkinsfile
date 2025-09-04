@@ -27,13 +27,9 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             steps {
-                sh '''
-                  sonar-scanner \
-                    -Dsonar.projectKey=fast-api \
-                    -Dsonar.projectName=fast-api \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=sqp_c41ae5588b3862537947f865aab10481df349868
-                '''
+                withSonarQubeEnv('SonarQube') {
+                    sh 'sonar-scanner -Dsonar.projectKey=fast-api -Dsonar.sources=./app'
+                }
             }
         }
         stage('Build Docker Image') {
