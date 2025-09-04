@@ -30,19 +30,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                        sonar-scanner \
-                            -Dsonar.projectKey=fast-api \
-                            -Dsonar.projectName=fast-api \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.login=$SONAR_TOKEN
-                        '''
-                    }
+                    sh 'sonar-scanner'
                 }
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t fastapi-app:latest .'
