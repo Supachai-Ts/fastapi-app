@@ -28,9 +28,11 @@ pipeline {
     stage('Run Tests & Coverage') {
       steps {
         sh '''
-          . venv/bin/activate
-          pytest --cov=app tests/
+        . venv/bin/activate
+        pytest --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing tests/
         '''
+        junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
+        archiveArtifacts artifacts: 'coverage.xml', onlyIfSuccessful: true
       }
     }
 
