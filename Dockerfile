@@ -14,3 +14,4 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
 # ตรวจสอบเวอร์ชัน
 RUN java -version && python --version && docker --version
+
