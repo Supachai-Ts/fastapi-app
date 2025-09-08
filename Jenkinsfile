@@ -10,7 +10,6 @@ pipeline {
   options { timestamps() }
 
   stages {
-
     stage('Install Base Tooling') {
       steps {
         sh '''
@@ -113,7 +112,7 @@ pipeline {
           }
         }
       }
-    }s
+    }
 
     // ต้องตั้ง webhook บน SonarQube -> http(s)://<JENKINS_URL>/sonarqube-webhook/
     stage('Quality Gate') {
@@ -141,5 +140,9 @@ pipeline {
     }
   }
 
-  post { always { echo "Pipeline finished" } }
+  post {
+    always {
+      echo "Pipeline finished"
+    }
+  }
 }
