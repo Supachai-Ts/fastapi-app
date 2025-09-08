@@ -93,7 +93,7 @@ pipeline {
     tage('SonarQube Analysis') {
       steps {
         withSonarQubeEnv('SonarQube') {
-          withCredentials([string(credentialsId: 'FastApi', variable: 'SONAR_TOKEN')]) {
+          withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
             sh '''
               set -eux
               # รันสแกนเนอร์จากใน agent (เห็นไฟล์แน่นอน)
