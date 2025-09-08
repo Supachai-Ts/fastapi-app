@@ -61,7 +61,6 @@ pipeline {
     stage('Quality Gate') {
       steps {
         timeout(time: 10, unit: 'MINUTES') {
-          // ถ้าไม่ผ่าน Gate → pipeline fail
           waitForQualityGate abortPipeline: true
         }
       }
