@@ -24,7 +24,7 @@ pipeline {
           . venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip list | grep fastapi || echo "FastAPI not installed"
+          pip install coverage pytest pytest-cov
         '''
       }
     }
@@ -34,9 +34,10 @@ pipeline {
         sh '''
           . venv/bin/activate
           export PYTHONPATH=$WORKSPACE
-          pytest --cov=app --cov-report=xml --cov-report=term-missing tests/
+          pytest --cov=app --cov-report=term-missing tests/
+          coverage xml -o ${COVERAGE_FILE}
         '''
-        sh 'ls -lh coverage.xml || echo "coverage.xml not found"'
+        sh 'ls -lh ${COVERAGE_FILE} || echo "coverage.xml not found"'
         junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
         archiveArtifacts artifacts: "${COVERAGE_FILE}", onlyIfSuccessful: true
       }
