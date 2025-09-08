@@ -9,7 +9,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
+        git branch: 'feature/test', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
       }
     }
 
