@@ -1,10 +1,16 @@
-# unused variable + duplicate string + magic number
-MY_CONST = 42
+# app/utils.py
+from typing import List
+def calculate_average(numbers: List[float]) -> float:
+    """
+    คำนวณค่าเฉลี่ยจาก list ของตัวเลข
+    """
+    if not numbers:
+        raise ValueError("Numbers list must not be empty")
+    return sum(numbers) / len(numbers)
 
-def bad_smell(x):
-    tmp = 123   # unused
-    if x == 1:
-        print("hello")
-    elif x == 1:  # duplicated condition
-        print("hello")
-    return x + 3.14  # magic number (float literal)
+
+def reverse_string(text: str) -> str:
+    """
+    กลับลำดับข้อความ
+    """
+    return text[::-1]
