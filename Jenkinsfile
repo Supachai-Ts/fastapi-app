@@ -90,7 +90,7 @@ pipeline {
       }
     }
 
-    tage('SonarQube Analysis') {
+    stage('SonarQube Analysis') {
       steps {
         withSonarQubeEnv('SonarQube') {
           withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
