@@ -6,6 +6,10 @@ pipeline {
     }
   }
 
+  environment {
+    COVERAGE_FILE = 'coverage.xml'
+  }
+
   stages {
     stage('Checkout') {
       steps {
@@ -20,7 +24,7 @@ pipeline {
           . venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage pytest pytest-cov
+          pip list | grep fastapi || echo "FastAPI not installed"
         '''
       }
     }
@@ -28,11 +32,12 @@ pipeline {
     stage('Run Tests & Coverage') {
       steps {
         sh '''
-        . venv/bin/activate
-        pytest --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing tests/
+          . venv/bin/activate
+          pytest --cov=app --cov-report=xml:${COVERAGE_FILE} --cov-report=term-missing tests/
         '''
+        sh 'ls -lh ${COVERAGE_FILE} || echo "coverage.xml not found"'
         junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
-        archiveArtifacts artifacts: 'coverage.xml', onlyIfSuccessful: true
+        archiveArtifacts artifacts: "${COVERAGE_FILE}", onlyIfSuccessful: true
       }
     }
 
@@ -48,7 +53,7 @@ pipeline {
                   -Dsonar.projectName=fast-api \
                   -Dsonar.sources=./app \
                   -Dsonar.python.version=3.11 \
-                  -Dsonar.python.coverage.reportPaths=coverage.xml \
+                  -Dsonar.python.coverage.reportPaths=${COVERAGE_FILE} \
                   -Dsonar.token=$SONAR_TOKEN
               """
             }
@@ -56,15 +61,14 @@ pipeline {
         }
       }
     }
+
     stage('Quality Gate') {
       steps {
         timeout(time: 10, unit: 'MINUTES') {
-          // ถ้าไม่ผ่าน Gate → pipeline fail
           waitForQualityGate abortPipeline: true
         }
       }
     }
-    
 
     stage('Build Docker Image') {
       steps {
@@ -78,10 +82,10 @@ pipeline {
           docker stop fastapi-app || true
           docker rm fastapi-app || true
           docker run -d --restart=always \
-          -e APP_ENV=staging \
-          -p 9100:8000 \
-          --name fastapi-app \
-          fastapi-app:latest
+            -e APP_ENV=staging \
+            -p 9100:8000 \
+            --name fastapi-app \
+            fastapi-app:latest
         '''
       }
     }
@@ -93,4 +97,3 @@ pipeline {
     }
   }
 }
-
