@@ -63,7 +63,7 @@ pipeline {
       }
     }
 
-    stage('Install Python Deps') {
+    stage('Install Dependencies') {
       steps {
         sh '''
           set -eux
