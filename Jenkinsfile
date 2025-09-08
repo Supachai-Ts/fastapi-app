@@ -1,30 +1,77 @@
 pipeline {
   agent {
     docker {
-        image 'python-java:latest'
-        args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
+      image 'python:3.11'
+      // รันเป็น root และต่อ docker.sock (ยังใช้สำหรับ build/run image แอป)
+      args '-u 0:0 -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
 
-  environment {
-    COVERAGE_FILE = 'coverage.xml'
-  }
+  options { timestamps() }
 
   stages {
+
+    stage('Install Base Tooling') {
+      steps {
+        sh '''
+          set -eux
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git wget unzip ca-certificates docker-cli default-jre-headless
+
+          command -v git
+          command -v docker
+          docker --version
+          java -version || true
+
+          # ---- Install SonarScanner CLI (fallback หลายชื่อไฟล์ กัน 404) ----
+          SCAN_VER=7.2.0.5079
+          BASE_URL="https://binaries.sonarsource.com/Distribution/sonar-scanner-cli"
+
+          CANDIDATES="
+            sonar-scanner-${SCAN_VER}-linux-x64.zip
+            sonar-scanner-${SCAN_VER}-linux.zip
+            sonar-scanner-cli-${SCAN_VER}-linux-x64.zip
+            sonar-scanner-cli-${SCAN_VER}-linux.zip
+          "
+
+          rm -f /tmp/sonar.zip || true
+          for f in $CANDIDATES; do
+            URL="${BASE_URL}/${f}"
+            echo "Trying: $URL"
+            if wget -q --spider "$URL"; then
+              wget -qO /tmp/sonar.zip "$URL"
+              break
+            fi
+          done
+
+          test -s /tmp/sonar.zip || { echo "Failed to download SonarScanner ${SCAN_VER}"; exit 1; }
+
+          unzip -q /tmp/sonar.zip -d /opt
+          SCAN_HOME="$(find /opt -maxdepth 1 -type d -name 'sonar-scanner*' | head -n1)"
+          ln -sf "$SCAN_HOME/bin/sonar-scanner" /usr/local/bin/sonar-scanner
+          sonar-scanner --version
+
+          # docker.sock ไว้ใช้ build/run image ในสเตจหลัง ๆ
+          test -S /var/run/docker.sock || { echo "ERROR: /var/run/docker.sock not mounted"; exit 1; }
+        '''
+      }
+    }
+
     stage('Checkout') {
       steps {
         git branch: 'feature/test', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
       }
     }
 
-    stage('Install Dependencies') {
+    stage('Install Python Deps') {
       steps {
         sh '''
-          python -m venv venv
-          . venv/bin/activate
-          pip install --upgrade pip
+          set -eux
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage pytest pytest-cov
+          pip install pytest pytest-cov
+          test -f app/__init__.py || touch app/__init__.py
         '''
       }
     }
@@ -32,38 +79,43 @@ pipeline {
     stage('Run Tests & Coverage') {
       steps {
         sh '''
-          . venv/bin/activate
-          export PYTHONPATH=$WORKSPACE
-          pytest --cov=app --cov-report=term-missing tests/
-          coverage xml -o ${COVERAGE_FILE}
+          set -eux
+          export PYTHONPATH="$PWD"
+          pytest -q --cov=app --cov-report=xml tests/
+          ls -la
+          test -f coverage.xml
+          test -d app
+          test -d tests
         '''
-        sh 'ls -lh ${COVERAGE_FILE} || echo "coverage.xml not found"'
-        junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
-        archiveArtifacts artifacts: "${COVERAGE_FILE}", onlyIfSuccessful: true
       }
     }
 
     stage('SonarQube Analysis') {
       steps {
-        script {
-          def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-          withSonarQubeEnv('SonarQube') {
-            withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-              sh """
-                ${scannerHome}/bin/sonar-scanner \
-                  -Dsonar.projectKey=fast-api \
-                  -Dsonar.projectName=fast-api \
-                  -Dsonar.sources=./app \
-                  -Dsonar.python.version=3.11 \
-                  -Dsonar.python.coverage.reportPaths=${COVERAGE_FILE} \
-                  -Dsonar.token=$SONAR_TOKEN
-              """
-            }
+        withSonarQubeEnv('SonarQube') {
+          withCredentials([string(credentialsId: 'FastApi', variable: 'SONAR_TOKEN')]) {
+            sh '''
+              set -eux
+              # รันสแกนเนอร์จากใน agent (เห็นไฟล์แน่นอน)
+              # ถ้ามีไฟล์ sonar-project.properties จะถูกใช้โดยอัตโนมัติ
+              sonar-scanner \
+                -Dsonar.host.url="$SONAR_HOST_URL" \
+                -Dsonar.login="$SONAR_TOKEN" \
+                -Dsonar.projectBaseDir="$PWD" \
+                -Dsonar.projectKey=TestFastApi \
+                -Dsonar.projectName="TestFastApi" \
+                -Dsonar.sources=app \
+                -Dsonar.tests=tests \
+                -Dsonar.python.version=3.11 \
+                -Dsonar.python.coverage.reportPaths=coverage.xml \
+                -Dsonar.sourceEncoding=UTF-8
+            '''
           }
         }
       }
     }
 
+    // ต้องตั้ง webhook บน SonarQube -> http(s)://<JENKINS_URL>/sonarqube-webhook/
     stage('Quality Gate') {
       steps {
         timeout(time: 10, unit: 'MINUTES') {
@@ -81,21 +133,13 @@ pipeline {
     stage('Deploy Container') {
       steps {
         sh '''
-          docker stop fastapi-app || true
-          docker rm fastapi-app || true
-          docker run -d --restart=always \
-            -e APP_ENV=staging \
-            -p 9100:8000 \
-            --name fastapi-app \
-            fastapi-app:latest
+          set -eux
+          docker rm -f fastapi-app || true
+          docker run -d --name fastapi-app -p 8000:8000 fastapi-app:latest
         '''
       }
     }
   }
 
-  post {
-    always {
-      echo "Pipeline finished"
-    }
-  }
+  post { always { echo "Pipeline finished" } }
 }
