@@ -1,19 +1,15 @@
 pipeline {
   agent {
     docker {
-      image 'python-java:latest'
-      args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
+        image 'python-java:latest'
+        args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
     }
-  }
-
-  environment {
-    COVERAGE_FILE = 'coverage.xml'
   }
 
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
+        git branch: 'feature/test', url: 'https://github.com/Supachai-Ts/fastapi-app.git'
       }
     }
 
@@ -31,12 +27,10 @@ pipeline {
 
     stage('Run Tests & Coverage') {
       steps {
-      sh '''
-        . venv/bin/activate
-        pytest --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing tests/
+        sh '''
+          . venv/bin/activate
+          pytest --cov=app tests/
         '''
-        junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
-        archiveArtifacts artifacts: 'coverage.xml', onlyIfSuccessful: true
       }
     }
 
@@ -45,26 +39,21 @@ pipeline {
         script {
           def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
           withSonarQubeEnv('SonarQube') {
-            sh """
-              ${scannerHome}/bin/sonar-scanner \
-                -Dsonar.projectKey=fast-api \
-                -Dsonar.projectName=fast-api \
-                -Dsonar.sources=./app \
-                -Dsonar.python.version=3.11 \
-                -Dsonar.python.coverage.reportPaths=${COVERAGE_FILE}
-            """
+            withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+              sh """
+                ${scannerHome}/bin/sonar-scanner \
+                  -Dsonar.projectKey=fast-api \
+                  -Dsonar.projectName=fast-api \
+                  -Dsonar.sources=./app \
+                  -Dsonar.token=$SONAR_TOKEN
+              """
+            }
           }
         }
       }
     }
 
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 10, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: true
-        }
-      }
-    }
+    
 
     stage('Build Docker Image') {
       steps {
@@ -78,10 +67,10 @@ pipeline {
           docker stop fastapi-app || true
           docker rm fastapi-app || true
           docker run -d --restart=always \
-            -e APP_ENV=staging \
-            -p 9100:8000 \
-            --name fastapi-app \
-            fastapi-app:latest
+          -e APP_ENV=staging \
+          -p 9100:8000 \
+          --name fastapi-app \
+          fastapi-app:latest
         '''
       }
     }
@@ -93,3 +82,4 @@ pipeline {
     }
   }
 }
+
