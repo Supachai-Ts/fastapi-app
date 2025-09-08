@@ -47,6 +47,8 @@ pipeline {
                   -Dsonar.projectKey=fast-api \
                   -Dsonar.projectName=fast-api \
                   -Dsonar.sources=./app \
+                  -Dsonar.python.version=3.11 \
+                  -Dsonar.python.coverage.reportPaths=coverage.xml \
                   -Dsonar.token=$SONAR_TOKEN
               """
             }
