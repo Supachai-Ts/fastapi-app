@@ -66,7 +66,7 @@ pipeline {
           docker rm fastapi-app || true
           docker run -d --restart=always \
           -e APP_ENV=staging \
-          -p 9000:8000 \
+          -p 9100:8000 \
           --name fastapi-app \
           fastapi-app:latest
         '''
