@@ -1,8 +1,8 @@
 pipeline {
   agent {
     docker {
-      image 'python-java:latest'
-      args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
+        image 'python-java:latest'
+        args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
     }
   }
 
@@ -34,11 +34,11 @@ pipeline {
         sh '''
           . venv/bin/activate
           export PYTHONPATH=$WORKSPACE
-          pytest --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing tests/
+          pytest --cov=app --cov-report=xml --cov-report=term-missing tests/
         '''
         sh 'ls -lh coverage.xml || echo "coverage.xml not found"'
         junit allowEmptyResults: true, testResults: 'tests/**/junit*.xml'
-        archiveArtifacts artifacts: 'coverage.xml', onlyIfSuccessful: true
+        archiveArtifacts artifacts: "${COVERAGE_FILE}", onlyIfSuccessful: true
       }
     }
 
